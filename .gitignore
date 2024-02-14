@@ -1,3 +1,13 @@
+chkpts/
+Data/
+norms/
+old_unused/
+results/
+results_dfs/
+tuning/
+weights/
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
