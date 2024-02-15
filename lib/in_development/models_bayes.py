@@ -179,7 +179,7 @@ class Bayes_Fa(nn.Module):
         return kl
 
 class Bayes_FaFp(nn.Module):
-    def __init__(self, n_regions=1, latent_dim=8, nhidden=20, aug_net_sizes=[32, 32]):
+    def __init__(self, n_regions=1, latent_dim=8, net_sizes=[20, 20], aug_net_sizes=[32, 32]):
         super(Bayes_FaFp, self).__init__()
 
         self.n_regions = n_regions
@@ -187,14 +187,14 @@ class Bayes_FaFp(nn.Module):
         self.ode_type = 'FaFp'
         self.uncertainty = 'bayes'
 
-        self.net = nn.Sequential(
-            nn.Flatten(),
-            Dense_Variational(n_regions*latent_dim, nhidden),
-            nn.ELU(inplace=True),
-            Dense_Variational(nhidden, nhidden),
-            nn.ELU(inplace=True),
-            Dense_Variational(nhidden, 2*n_regions),
-        )
+        self.net = nn.ModuleList()
+        self.net.append(nn.Flatten())
+        self.net.append(Dense_Variational(n_regions * latent_dim, net_sizes[0]))
+        for l in range(1, len(net_sizes)):
+            self.net.append(nn.ELU(inplace=True))
+            self.net.append(Dense_Variational(net_sizes[l - 1], net_sizes[l]))
+        self.net.append(Dense_Variational(net_sizes[-1], 2 * n_regions))
+
 
         self.aug_net = nn.ModuleList()
         self.aug_net.append(nn.Flatten())
@@ -211,7 +211,11 @@ class Bayes_FaFp(nn.Module):
 
     def forward(self, t, x):
         out_of_range_mask = (x > 2) | (x < -1)
-        out = torch.abs(self.net(x)).reshape(-1, self.n_regions, 2)
+
+        out = x
+        for layer in self.net:
+            out = layer(out)
+        out = torch.abs(out).reshape(-1, self.n_regions, 2)
         
         self.params.append(out)
 
