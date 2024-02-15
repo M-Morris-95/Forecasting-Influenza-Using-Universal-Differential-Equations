@@ -27,16 +27,15 @@ class VAE:
     def __init__(self, enc, ode, dec, n_qs, latent_dim, 
                  n_regions=1,
                  ode_type='Fp', 
-                 q_sizes=[128, 64], 
-                 ff_sizes = [32], 
-                 ili_sizes=None, 
                  len_tr=130, 
                  file_prefix = None,
                  chkpt_prefix = None,
-                 SIR_scaler=[0.1, 0.05, 1.0], 
                  prior_params = {'means':[0.8, 0.55],
                                  'stds':[0.2, 0.2]},
                  device='cpu', 
+                 ode_params = {},
+                 enc_params = {},
+                 dec_params = {},
                  dtype=torch.float32):
         
         self.dtype = dtype
@@ -45,8 +44,9 @@ class VAE:
         self.n_regions = n_regions
         self.len_tr = len_tr
         self.ld_ode = latent_dim
-        self.ode = ode(n_regions, 
-        latent_dim = self.ld_ode)
+
+        self.ode = ode(n_regions, latent_dim = self.ld_ode, **ode_params)
+
         self.file_prefix=file_prefix
         self.chkpt_prefix=chkpt_prefix
 
@@ -56,8 +56,6 @@ class VAE:
         
         if ode_type == 'Fa':
             self.ld_enc = latent_dim
-            self.ld_dec = latent_dim
-            SIR_scaler = [1.0, 1.0, 1.0]
         else:
             self.ld_enc = latent_dim-1
             self.ld_dec = 3 
@@ -65,16 +63,14 @@ class VAE:
         self.enc = enc(n_regions, 
                        n_qs=n_qs, 
                        latent_dim = self.ld_enc,
-                       q_sizes=q_sizes, 
-                       ff_sizes = ff_sizes, 
-                       ili_sizes=None, 
-                       SIR_scaler=SIR_scaler, 
                        device=device, 
-                       dtype=dtype)
+                       dtype=dtype, 
+                       **enc_params)
         
         self.dec = dec(n_regions, 
-                           latent_dim=self.ld_dec, 
-                           input_dim=1)
+                        latent_dim=self.ld_dec, 
+                        input_dim=1,
+                        **dec_params)
         
         self.anneal_params = {'anneal':True,
                            'reset_pos':10000,
@@ -186,7 +182,6 @@ class VAE:
             self.norms.append(round(grad_norm, 1))
         return (batch_data, batch_names)
     
-
     def pre_train(self, train_loader, epochs=3, lr=1e-3, disable = False): 
         optimizer = torch.optim.Adam(self.enc.parameters(), lr=lr)
         for epoch in range(1,1+epochs):
@@ -209,7 +204,6 @@ class VAE:
                 pbar.set_postfix({'Epoch':epoch, 'KL_z':np.mean(kls)})  
             if disable:
                 print(f"{'Epoch':<8}: {round(epoch, 3):.3f}, {'KL_z':<8}: {round(np.mean(kls), 3):.3f}")
-
 
     def train(self, train_loader, t, epochs, losses, eval_pts, grad_lim=300, n_samples=32, checkpoint=False, track_norms = False, norm_file = 'grad_norms.txt', disable=False, validate = None): 
         self.best_loss = 1e9     
@@ -247,9 +241,6 @@ class VAE:
             if checkpoint:
                 self.checkpoint()
                 
-             
-
-
     def checkpoint(self):
         if self.chkpt_prefix == None:
             self.chkpt_prefix = self.file_prefix
