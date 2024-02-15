@@ -218,7 +218,6 @@ class FaFp(nn.Module):
         for layer in self.net:
             out = layer(out)
         out = torch.abs(out).reshape(-1, self.n_regions, 2)
-        # out = torch.abs(self.net(x)).reshape(-1, self.n_regions, 2)
         
         self.params.append(out)
 
