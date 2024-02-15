@@ -10,10 +10,11 @@ import torch.distributions as dist
 
 
 class Dense_Variational(nn.Module):
-    def __init__(self, in_features, out_features, bias=True):
+    def __init__(self, in_features, out_features, bias=True, prior_std=1.0):
         super(Dense_Variational, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
+        self.prior_std = prior_std
 
         self.w_mean = nn.Parameter(torch.Tensor(out_features, in_features))
         self.w_std = nn.Parameter(torch.Tensor(out_features, in_features))
@@ -48,8 +49,8 @@ class Dense_Variational(nn.Module):
     
     def make_prior(self):
         self.prior = [
-            dist.Normal(torch.zeros_like(self.w_mean), torch.ones_like(self.w_mean)),
-            dist.Normal(torch.zeros_like(self.b_mean), torch.ones_like(self.b_mean)),
+            dist.Normal(torch.zeros_like(self.w_mean), self.prior_std * torch.ones_like(self.w_mean)),
+            dist.Normal(torch.zeros_like(self.b_mean), self.prior_std * torch.ones_like(self.b_mean)),
         ]
         return self.prior
 
@@ -179,7 +180,7 @@ class Bayes_Fa(nn.Module):
         return kl
 
 class Bayes_FaFp(nn.Module):
-    def __init__(self, n_regions=1, latent_dim=8, net_sizes=[20, 20], aug_net_sizes=[32, 32]):
+    def __init__(self, n_regions=1, latent_dim=8, net_sizes=[20, 20], aug_net_sizes=[32, 32], prior_std=1.0):
         super(Bayes_FaFp, self).__init__()
 
         self.n_regions = n_regions
@@ -189,20 +190,20 @@ class Bayes_FaFp(nn.Module):
 
         self.net = nn.ModuleList()
         self.net.append(nn.Flatten())
-        self.net.append(Dense_Variational(n_regions * latent_dim, net_sizes[0]))
+        self.net.append(Dense_Variational(n_regions * latent_dim, net_sizes[0], prior_std=prior_std))
         for l in range(1, len(net_sizes)):
             self.net.append(nn.ELU(inplace=True))
-            self.net.append(Dense_Variational(net_sizes[l - 1], net_sizes[l]))
-        self.net.append(Dense_Variational(net_sizes[-1], 2 * n_regions))
+            self.net.append(Dense_Variational(net_sizes[l - 1], net_sizes[l], prior_std=prior_std))
+        self.net.append(Dense_Variational(net_sizes[-1], 2 * n_regions, prior_std=prior_std))
 
 
         self.aug_net = nn.ModuleList()
         self.aug_net.append(nn.Flatten())
-        self.aug_net.append(Dense_Variational(n_regions * latent_dim, aug_net_sizes[0]))
+        self.aug_net.append(Dense_Variational(n_regions * latent_dim, aug_net_sizes[0], prior_std=prior_std))
         for l in range(1, len(aug_net_sizes)):
             self.aug_net.append(nn.ELU(inplace=True))
-            self.aug_net.append(Dense_Variational(aug_net_sizes[l - 1], aug_net_sizes[l]))
-        self.aug_net.append(Dense_Variational(aug_net_sizes[-1], 3 * n_regions))
+            self.aug_net.append(Dense_Variational(aug_net_sizes[l - 1], aug_net_sizes[l], prior_std=prior_std))
+        self.aug_net.append(Dense_Variational(aug_net_sizes[-1], 3 * n_regions, prior_std=prior_std))
         
         self.Fa_w = 1.0
 
