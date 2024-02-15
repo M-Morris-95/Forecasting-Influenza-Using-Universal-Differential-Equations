@@ -36,7 +36,11 @@ class VAE:
                  ode_params = {},
                  enc_params = {},
                  dec_params = {},
+                 kl_w =1,
+                 ode_kl_w = 1,
                  dtype=torch.float32):
+        self.kl_w = kl_w
+        self.ode_kl_w = ode_kl_w
         
         self.dtype = dtype
         self.device = device
@@ -108,8 +112,8 @@ class VAE:
         return y_pred
        
     def calc_loss(self, y_pred, y_true, losses):
-        self.kl_w = 1
         loss = torch.tensor(0.0, requires_grad=True)
+
 
 
         batch_data = [0]
@@ -123,7 +127,7 @@ class VAE:
 
         if losses.get('nll', True):
             nll = train_functions.nll_loss(y_pred, y_true)
-            loss = loss+ nll
+            loss = loss + nll
             batch_data.append(round(nll.cpu().item(), 3))
             batch_names.append('nll')
                                
@@ -153,7 +157,7 @@ class VAE:
             batch_names.append('reg_loss')
 
         if self.ode.uncertainty == 'bayes':
-            ode_kl = self.ode.get_kl()
+            ode_kl = self.ode_kl_w * self.ode.get_kl()
             loss = loss+ ode_kl
             batch_data.append(round(ode_kl.cpu().item(), 3))
             batch_names.append('ode_kl')
