@@ -140,7 +140,7 @@ for num in nums:
                     x_train, y_train, x_test, y_test, scaler = _data(run_backward=True, no_qs_in_output=True)
                     train_loader, x_test, y_test = convert_to_torch(x_train, y_train, x_test, y_test, batch_size=32, shuffle=True, dtype=dtype)  
 
-                    load_file_prefix = f'weights/{region}/CONN/{test_season}_{num}_'
+                    load_file_prefix = f'weights/{region}/{ode_name}/{test_season}_{num}_'
                     model = VAE(Encoder_Back_GRU, ode, Decoder, n_qs, latent_dim, n_regions, q_sizes=q_sizes, ff_sizes=ff_sizes, file_prefix=load_file_prefix, chkpt_prefix=chkpt_prefix)
                     model.setup_training(lr=lr)
 
