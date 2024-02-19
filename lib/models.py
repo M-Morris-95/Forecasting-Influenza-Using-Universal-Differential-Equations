@@ -13,8 +13,12 @@ def make_prior(mean, z_prior=torch.tensor([0.1, 0.01]), device='cpu', latent_dim
 
     return Normal(mean_concat, torch.abs(std))
 
-def reparam(eps, std, mean, n_samples, batch_size):
-    z = eps * std + mean
+def reparam(eps, std, mean, n_samples, batch_size, uncertainty=True):
+    if uncertainty:
+        z = eps * std + mean
+    else:
+        z=mean
+        
     z = torch.concat([torch.abs(z[..., :2]), (1 - torch.abs(z[..., :2]).sum(-1)).unsqueeze(-1), z[..., 2:]], -1)
     z = z.reshape((n_samples * batch_size, ) + z.shape[2:])
     return z
@@ -47,13 +51,14 @@ class Decoder(nn.Module):
         return out.reshape(tuple(shape[:2]) + (-1,))
     
 class Encoder_Back_GRU(nn.Module):
-    def __init__(self, n_regions, n_qs=9, latent_dim = 6, q_sizes=[128, 64], ff_sizes = [32], SIR_scaler=[0.1, 0.05, 1.0], device='cpu', dtype=torch.float32, **kwargs):
+    def __init__(self, n_regions, n_qs=9, latent_dim = 6, q_sizes=[128, 64], ff_sizes = [32], SIR_scaler=[0.1, 0.05, 1.0], uncertainty=True, device='cpu', dtype=torch.float32, **kwargs):
         super(Encoder_Back_GRU, self).__init__()
         self.latent_dim = latent_dim
         input_size = n_qs+1
         self.n_regions = n_regions
         self.device = device
         self.dtype = dtype
+        self.uncertainty = uncertainty
         
         self.scaler = torch.tensor(SIR_scaler, dtype=self.dtype, device=self.device)
         if latent_dim > len(self.scaler):
@@ -74,7 +79,11 @@ class Encoder_Back_GRU(nn.Module):
                 self.ff_layers.append(nn.Linear(ff_sizes[l-1], ff_sizes[l]))
         else:
             l = 0
-        self.ff_layers.append(nn.Linear(ff_sizes[l], 2 * n_regions * latent_dim))
+
+        if self.uncertainty:
+            self.ff_layers.append(nn.Linear(ff_sizes[l], 2 * n_regions * latent_dim))
+        else:
+            self.ff_layers.append(nn.Linear(ff_sizes[l], n_regions * latent_dim))
 
     def forward(self, x):
         x = x.flip(1)
@@ -86,13 +95,16 @@ class Encoder_Back_GRU(nn.Module):
         for ff_layer in self.ff_layers:
             x = ff_layer(x)
 
-        mean, std = torch.split(x, split_size_or_sections=x.size(-1) // 2, dim=-1)
+        if self.uncertainty:
+            x, std = torch.split(x, split_size_or_sections=x.size(-1) // 2, dim=-1)
+            std = std.reshape(-1, self.n_regions, self.latent_dim)
+            std = torch.abs(std) * self.scaler
 
-        mean = mean.reshape(-1, self.n_regions, self.latent_dim)
-        std = std.reshape(-1, self.n_regions, self.latent_dim)
-
-        std = torch.abs(std) * self.scaler
-        return mean, std
+            x = x.reshape(-1, self.n_regions, self.latent_dim)
+            return x, std
+        else:
+            x = x.reshape(-1, self.n_regions, self.latent_dim)
+            return x
 
 class Fp(nn.Module):
     def __init__(self, n_region=1, latent_dim=8, nhidden=20, **kwargs):

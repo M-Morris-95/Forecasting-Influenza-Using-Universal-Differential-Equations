@@ -38,6 +38,7 @@ class VAE:
                  dec_params = {},
                  kl_w =1,
                  ode_kl_w = 1,
+                 uncertainty = True,
                  dtype=torch.float32):
         self.kl_w = kl_w
         self.ode_kl_w = ode_kl_w
@@ -48,6 +49,7 @@ class VAE:
         self.n_regions = n_regions
         self.len_tr = len_tr
         self.ld_ode = latent_dim
+        self.uncertainty = uncertainty
 
         self.ode = ode(n_regions, latent_dim = self.ld_ode, **ode_params)
 
@@ -69,6 +71,7 @@ class VAE:
                        latent_dim = self.ld_enc,
                        device=device, 
                        dtype=dtype, 
+                       uncertainty = uncertainty,
                        **enc_params)
         
         self.dec = dec(n_regions, 
@@ -104,8 +107,15 @@ class VAE:
 
         step_size = t[1] - t[0]
         with torch.set_grad_enabled(training):
-            self.mean, self.std = self.enc(x)
-            z = models.reparam(eps, self.std, self.mean, n_samples, batch_size) + 1e-5
+            if self.uncertainty:
+                self.mean, self.std = self.enc(x)
+                z = models.reparam(eps, self.std, self.mean, n_samples, batch_size, uncertainty=True) + 1e-5
+            else:
+                n_samples = 1
+                self.mean = self.enc(x)
+                z = models.reparam(eps, None, self.mean, n_samples, batch_size, uncertainty=False) + 1e-5
+                z = z.unsqueeze(1)
+                
             self.latent = odeint(self.ode, z, t, method='rk4', options=dict(step_size=step_size))
             y_pred = self.dec(self.latent[..., :3]).reshape((-1, n_samples, batch_size, self.n_regions)).permute(2, 1, 0, 3)
 
@@ -113,8 +123,6 @@ class VAE:
        
     def calc_loss(self, y_pred, y_true, losses):
         loss = torch.tensor(0.0, requires_grad=True)
-
-
 
         batch_data = [0]
         batch_names = ['loss']
@@ -124,6 +132,12 @@ class VAE:
             self.kl_w = train_functions.KL_annealing(self.tr_step, self.anneal_params)
             batch_data.append(round(self.kl_w, 3))
             batch_names.append('kl_w')
+
+        if losses.get('mse', True):
+            mse = torch.mean(torch.square(y_pred - y_true.unsqueeze(1)))
+            loss = loss + mse
+            batch_data.append(round(mse.cpu().item(), 3))
+            batch_names.append('mse')
 
         if losses.get('nll', True):
             nll = train_functions.nll_loss(y_pred, y_true)
