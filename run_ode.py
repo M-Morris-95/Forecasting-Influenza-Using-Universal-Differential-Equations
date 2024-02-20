@@ -17,6 +17,7 @@ import lib.utils as utils
 
 from lib.regional_data_builder import DataConstructor, convert_to_torch
 from lib.models import Encoder_Back_GRU, Decoder, Fa, Fp, FaFp
+from lib.in_development.models_bayes import Bayes_Fa, Bayes_Fp, Bayes_FaFp
 from lib.VAE import VAE
 
 # from lib.encoders import 
@@ -30,7 +31,7 @@ torch.set_num_threads(1)
 dtype = torch.float32
 
 # data stuff
-window_size = 28
+window_size = 1
 gamma = 28
 t = torch.arange(window_size + gamma + 1, dtype=dtype)/7
 
@@ -43,63 +44,60 @@ epochs = 250
 
 # model training info
 training_info =   {
-    'UONN': {'nll':True, 'kl_z':True, 'kl_p':True,  'Fa_norm':True,  'reg_loss':True,  'anneal':True},
-    'CONN': {'nll':True, 'kl_z':True, 'kl_p':True,  'Fa_norm':False, 'reg_loss':True,  'anneal':True},
-    'SONN': {'nll':True, 'kl_z':True, 'kl_p':False, 'Fa_norm':False, 'reg_loss':False, 'anneal':True},
+    'UONN': {'nll':True, 'mse':False, 'kl_z':True, 'kl_p':True,  'Fa_norm':True,  'reg_loss':True,  'anneal':True},
+    'CONN': {'nll':True, 'mse':False, 'kl_z':True, 'kl_p':True,  'Fa_norm':False, 'reg_loss':True,  'anneal':True},
+    'SONN': {'nll':True, 'mse':False, 'kl_z':True, 'kl_p':False, 'Fa_norm':False, 'reg_loss':False, 'anneal':True},
+    'UONNb': {'nll':True, 'mse':False, 'kl_z':True, 'kl_p':True,  'Fa_norm':True,  'reg_loss':True,  'anneal':True},
+    'CONNb': {'nll':True, 'mse':False, 'kl_z':True, 'kl_p':True,  'Fa_norm':False, 'reg_loss':True,  'anneal':True},
+    'SONNb': {'nll':True, 'mse':False, 'kl_z':True, 'kl_p':False, 'Fa_norm':False, 'reg_loss':False, 'anneal':True},
 }
+
+ode_params = {'net_sizes': [64, 64, 32],  'aug_net_sizes': [64, 64], 'prior_std' : 0.05}
 
 # model region info 
 region_info = {
     'state': {
         'n_regions': 49,
-        'latent_dim': 5,
+        'latent_dim': 8,
         'n_qs':5,
-        'q_sizes': [256, 128],
-        'ff_sizes': [128, 64],
+        'ode_params':{'net_sizes': [64, 64, 32],  'aug_net_sizes': [64, 64], 'prior_std' : 0.05},
+        'dec_params':{},
+        'enc_params':{'q_sizes':[256, 128], 'ff_sizes':[64,64], 'SIR_scaler':[0.1, 0.05, 1.0]},
+        'epochs':100
     },
     'hhs': {
         'n_regions': 10,
-        'latent_dim': 5,
+        'latent_dim': 8,
         'n_qs':9,
-        'q_sizes': [128, 64],
-        'ff_sizes': [64, 32],
+        'ode_params':{'net_sizes': [64, 64, 32],  'aug_net_sizes': [64, 64], 'prior_std' : 0.05},
+        'dec_params':{},
+        'enc_params':{'q_sizes':[256, 128], 'ff_sizes':[64,64], 'SIR_scaler':[0.1, 0.05, 1.0]},
+        'epochs':100
     },
     'US': {
         'n_regions': 1,
-        'latent_dim': 6,
+        'latent_dim': 8,
         'n_qs':90,
-        'q_sizes': [64, 32],
-        'ff_sizes': [32, 16],
+        'ode_params':{'net_sizes': [64, 64, 32],  'aug_net_sizes': [64, 64], 'prior_std' : 0.05},
+        'dec_params':{},
+        'enc_params':{'q_sizes':[256, 128], 'ff_sizes':[64,64], 'SIR_scaler':[0.1, 0.05, 1.0]},
+        'epochs':100
     }
 }
+
 ode_names = ['SONN', 'CONN', 'UONN']
 test_seasons = [2015, 2016, 2017, 2018]
 regions = ['US']
 nums = [10,11,12]
 
-
 started_file_path = "started.txt"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 for num in nums:
     for region in regions:
         for test_season in test_seasons:
             for ode_name in ode_names:
                 # setup files
-                ode = {'CONN':Fp, 'UONN':FaFp, 'SONN':Fa}[ode_name]
+                ode = {'CONN':Fp, 'UONN':FaFp, 'SONN':Fa, 'CONNb':Bayes_Fp, 'UONNb':Bayes_FaFp, 'SONNb':Bayes_Fa}[ode_name]
 
                 file_prefix = f'weights/{region}/pre_trained_{ode_name}/{test_season}_{num}_'
                 norm_prefix = f'norms/{region}/pre_trained_{ode_name}/{test_season}_{num}_'
@@ -127,37 +125,43 @@ for num in nums:
                     utils.make_file(chkpt_prefix)
                     utils.make_file(file_prefix)
                     utils.make_file(norm_prefix)
-
+                 
                     # setup stuff for models
                     losses = training_info[ode_name]
                     n_regions = region_info[region]['n_regions']
-                    latent_dim = region_info[region]['latent_dim']
                     n_qs = region_info[region]['n_qs']
-                    q_sizes = region_info[region]['q_sizes']
-                    ff_sizes = region_info[region]['ff_sizes']
+                    latent_dim = region_info[region]['latent_dim']
+                    enc_params = region_info[region]['enc_params']
+                    dec_params = region_info[region]['dec_params']
+                    ode_params = region_info[region]['ode_params']
+                    epochs = region_info[region]['epochs']
 
                     _data = DataConstructor(test_season=test_season, region = region, window_size=window_size, n_queries=n_qs, gamma=gamma)
                     x_train, y_train, x_test, y_test, scaler = _data(run_backward=True, no_qs_in_output=True)
                     train_loader, x_test, y_test = convert_to_torch(x_train, y_train, x_test, y_test, batch_size=32, shuffle=True, dtype=dtype)  
 
                     load_file_prefix = f'weights/{region}/{ode_name}/{test_season}_{num}_'
-                    model = VAE(Encoder_Back_GRU, ode, Decoder, n_qs, latent_dim, n_regions, q_sizes=q_sizes, ff_sizes=ff_sizes, file_prefix=load_file_prefix, chkpt_prefix=chkpt_prefix)
-                    model.setup_training(lr=lr)
 
-#                     model.load()
+                    model = VAE(Encoder_Back_GRU, ode, Decoder, n_qs, latent_dim, n_regions, file_prefix=load_file_prefix, chkpt_prefix=chkpt_prefix, ode_params=ode_params, enc_params=enc_params, dec_params=dec_params, uncertainty=uncertainty, ode_kl_w = 1/153)
+                    model.setup_training(lr=lr)
                     model.file_prefix = file_prefix
-                    model.train(train_loader, t, epochs, losses, eval_pts, n_samples = n_samples, grad_lim=1500, checkpoint=True, track_norms=True, norm_file=f'{norm_prefix}norms.txt', disable=True, 
-                                validate = {'x_test':x_test, 'y_test':y_test, 't':t, 'scaler':scaler, 'n_samples':128})
-                    
-                    
-#                     model.ode.Fa_w = 0
-#                     for epoch in range(5):
-#                         model.train(train_loader, t, 1, losses, eval_pts, n_samples = n_samples, grad_lim=1500, checkpoint=True, track_norms=True, norm_file=f'{norm_prefix}norms.txt', disable=True)
-                    
-#                     for epoch in range(10):
-#                         model.ode.Fa_w += 0.1
-#                         model.train(train_loader, t, 1, losses, eval_pts, n_samples = n_samples, grad_lim=1500, checkpoint=True, track_norms=True, norm_file=f'{norm_prefix}norms.txt', disable=True)
-#                     model.train(epochs)
-                    
+
+                    for i in range(2,5):
+                        eval_pts = [0,7,14,21,28][:i]
+                        time_steps = t[:(eval_pts[-1]+1)]
+                        
+                        model.train(train_loader, 
+                                    time_steps, 
+                                    int(epochs/4), 
+                                    losses, 
+                                    eval_pts, 
+                                    n_samples = n_samples, 
+                                    grad_lim=1e3, 
+                                    checkpoint=True, 
+                                    track_norms=True, 
+                                    norm_file=f'{norm_prefix}norms.txt', 
+                                    disable=False, 
+                                    validate = {'x_test':x_test, 'y_test':y_test, 't':t, 'scaler':scaler, 'n_samples':128})
+                                            
                     model.save()
                     utils.add_finished_to_line(started_file_path, file_prefix)
