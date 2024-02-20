@@ -66,7 +66,6 @@ class Dense_Variational(nn.Module):
             self.in_features, self.out_features, self.bias is not None
         )
 
-
 class Bayes_Fp(nn.Module):
     def __init__(self, n_regions=1, latent_dim=8, net_sizes=[20, 20], prior_std=0.1, **kwargs):
         super(Bayes_Fp, self).__init__()
@@ -125,7 +124,7 @@ class Bayes_Fp(nn.Module):
 
 
 class Bayes_Fa(nn.Module):
-    def __init__(self, n_regions=1, latent_dim=8, net_sizes=[32, 32], aug_net_sizes=[32, 32], nhidden_fa=32, prior_std=0.1, **kwargs):
+    def __init__(self, n_regions=1, latent_dim=8, aug_net_sizes=[32, 32], nhidden_fa=32, prior_std=0.1, **kwargs):
         super(Bayes_Fa, self).__init__()
         self.ode_type = 'Fa'
         self.uncertainty = 'bayes'
