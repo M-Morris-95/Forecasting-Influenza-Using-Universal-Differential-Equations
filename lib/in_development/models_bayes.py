@@ -87,7 +87,11 @@ class Bayes_Fp(nn.Module):
 
     def forward(self, t, x):
         out_of_range_mask = (x > 2) | (x < -1)
-        out = torch.abs(self.Fp_net(x)).reshape(-1, self.n_regions, 2)
+
+        out = x
+        for layer in self.Fp_net:
+            out = layer(out)
+        out = torch.abs(out).reshape(-1, self.n_regions, 2)
         
         self.params.append(out)
 
@@ -110,10 +114,11 @@ class Bayes_Fp(nn.Module):
         self.params = []
         return Normal(params.mean(0), params.std(0))
  
+ 
     def get_kl(self):
         kl = 0
         count = 0
-        for layer in list(self.children())[1]:
+        for layer in list(self.children())[0]:
             try:
                 kl = kl + sum([dist.kl_divergence(q, p).mean() for q, p in zip(layer.make_posterior(), layer.make_prior())])/2
                 count = count + 1
@@ -131,9 +136,9 @@ class Bayes_Fa(nn.Module):
 
         self.n_regions = n_regions
         self.latent_dim = latent_dim
-        self.flatten = nn.Flatten()
-
+        
         self.aug_net = nn.ModuleList()
+        self.aug_net.append(nn.Flatten())
         self.aug_net.append(Dense_Variational(n_regions * latent_dim, aug_net_sizes[0], prior_std=prior_std))
         for l in range(1, len(aug_net_sizes)):
             self.aug_net.append(nn.ELU(inplace=True))
@@ -146,10 +151,10 @@ class Bayes_Fa(nn.Module):
     def forward(self, t, x):
         out_of_range_mask = (x > 2) | (x < -1)
 
-        out_aug = self.flatten(x)
+        out = x
         for layer in self.aug_net:
-            out_aug = layer(out_aug)
-        Fa = out_aug.reshape(-1, self.n_regions, 3)
+            out = layer(out)
+        Fa = out.reshape(-1, self.n_regions, 3)
         res = torch.cat([Fa, torch.zeros_like(x[..., 3:])], -1)
 
         res[out_of_range_mask] = 0.0
@@ -168,7 +173,7 @@ class Bayes_Fa(nn.Module):
     def get_kl(self):
         kl = 0
         count = 0
-        for layer in list(self.children())[1]:
+        for layer in list(self.children())[0]:
             try:
                 kl = kl + sum([dist.kl_divergence(q, p).mean() for q, p in zip(layer.make_posterior(), layer.make_prior())])/2
                 count = count + 1
@@ -248,11 +253,13 @@ class Bayes_FaFp(nn.Module):
     def get_kl(self):
         kl = 0
         count = 0
-        for layer in list(self.children())[1]:
-            try:
-                kl = kl + sum([dist.kl_divergence(q, p).mean() for q, p in zip(layer.make_posterior(), layer.make_prior())])/2
-                count = count + 1
-            except:
-                pass
+        
+        for model in list(self.children()):
+            for layer in list(model):
+                try:
+                    kl = kl + sum([dist.kl_divergence(q, p).mean() for q, p in zip(layer.make_posterior(), layer.make_prior())])/2
+                    count = count + 1
+                except:
+                    pass
         kl = kl/count
         return kl
