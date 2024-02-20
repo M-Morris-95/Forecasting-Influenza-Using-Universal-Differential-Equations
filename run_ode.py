@@ -62,7 +62,7 @@ region_info = {
         'ode_params':{'net_sizes': [64, 64, 32],  'aug_net_sizes': [64, 64], 'prior_std' : 0.05},
         'dec_params':{},
         'enc_params':{'q_sizes':[256, 128], 'ff_sizes':[64,64], 'SIR_scaler':[0.1, 0.05, 1.0]},
-        'epochs':100
+        'epochs':120
     },
     'hhs': {
         'n_regions': 10,
@@ -71,7 +71,7 @@ region_info = {
         'ode_params':{'net_sizes': [64, 64, 32],  'aug_net_sizes': [64, 64], 'prior_std' : 0.05},
         'dec_params':{},
         'enc_params':{'q_sizes':[256, 128], 'ff_sizes':[64,64], 'SIR_scaler':[0.1, 0.05, 1.0]},
-        'epochs':100
+        'epochs':120
     },
     'US': {
         'n_regions': 1,
@@ -80,7 +80,7 @@ region_info = {
         'ode_params':{'net_sizes': [64, 64, 32],  'aug_net_sizes': [64, 64], 'prior_std' : 0.05},
         'dec_params':{},
         'enc_params':{'q_sizes':[256, 128], 'ff_sizes':[64,64], 'SIR_scaler':[0.1, 0.05, 1.0]},
-        'epochs':100
+        'epochs':120
     }
 }
 
@@ -91,7 +91,6 @@ nums = [10,11,12,13,14]
 uncertainty=True
 
 started_file_path = "started.txt"
-
 for num in nums:
     for region in regions:
         for test_season in test_seasons:
@@ -118,54 +117,56 @@ for num in nums:
                         with open(started_file_path, 'a') as file:
                             file.write(file_prefix + '\n')
                                 
-                if run:            
-                    print(region, ode_name, test_season, num)
+                if run:      
+                    try:      
+                        print(region, ode_name, test_season, num)
 
-                    # make folders
-                    utils.make_file(chkpt_prefix)
-                    utils.make_file(file_prefix)
-                    utils.make_file(norm_prefix)
-                 
-                    # setup stuff for models
-                    losses = training_info[ode_name]
-                    n_regions = region_info[region]['n_regions']
-                    n_qs = region_info[region]['n_qs']
-                    latent_dim = region_info[region]['latent_dim']
-                    enc_params = region_info[region]['enc_params']
-                    dec_params = region_info[region]['dec_params']
-                    ode_params = region_info[region]['ode_params']
-                    epochs = region_info[region]['epochs']
+                        # make folders
+                        utils.make_file(chkpt_prefix)
+                        utils.make_file(file_prefix)
+                        utils.make_file(norm_prefix)
+                    
+                        # setup stuff for models
+                        losses = training_info[ode_name]
+                        n_regions = region_info[region]['n_regions']
+                        n_qs = region_info[region]['n_qs']
+                        latent_dim = region_info[region]['latent_dim']
+                        enc_params = region_info[region]['enc_params']
+                        dec_params = region_info[region]['dec_params']
+                        ode_params = region_info[region]['ode_params']
+                        epochs = region_info[region]['epochs']
 
-                    _data = DataConstructor(test_season=test_season, region = region, window_size=window_size, n_queries=n_qs, gamma=gamma)
-                    x_train, y_train, x_test, y_test, scaler = _data(run_backward=True, no_qs_in_output=True)
-                    train_loader, x_test, y_test = convert_to_torch(x_train, y_train, x_test, y_test, batch_size=32, shuffle=True, dtype=dtype)  
+                        _data = DataConstructor(test_season=test_season, region = region, window_size=window_size, n_queries=n_qs, gamma=gamma)
+                        x_train, y_train, x_test, y_test, scaler = _data(run_backward=True, no_qs_in_output=True)
+                        train_loader, x_test, y_test = convert_to_torch(x_train, y_train, x_test, y_test, batch_size=32, shuffle=True, dtype=dtype)  
 
-                    load_file_prefix = f'weights/{region}/{ode_name}/{test_season}_{num}_'
+                        load_file_prefix = f'weights/{region}/{ode_name}/{test_season}_{num}_'
 
-                    model = VAE(Encoder_Back_GRU, ode, Decoder, n_qs, latent_dim, n_regions, file_prefix=load_file_prefix, chkpt_prefix=chkpt_prefix, ode_params=ode_params, enc_params=enc_params, dec_params=dec_params, uncertainty=uncertainty, ode_kl_w = 1/153)
-                    model.setup_training(lr=lr)
-                    model.file_prefix = file_prefix
+                        model = VAE(Encoder_Back_GRU, ode, Decoder, n_qs, latent_dim, n_regions, file_prefix=load_file_prefix, chkpt_prefix=chkpt_prefix, ode_params=ode_params, enc_params=enc_params, dec_params=dec_params, uncertainty=uncertainty, ode_kl_w = 1/153)
+                        model.setup_training(lr=lr)
+                        model.file_prefix = file_prefix
 
-                    for i in range(2,5):
-                        eval_pts = [0,7,14,21,28][:i]
-                        time_steps = t[:(eval_pts[-1]+1)]
-                        
-                        model.train(train_loader, 
-                                    time_steps, 
-                                    int(epochs/4), 
-                                    losses, 
-                                    eval_pts, 
-                                    n_samples = n_samples, 
-                                    grad_lim=5000, 
-                                    checkpoint=True, 
-                                    track_norms=True, 
-                                    norm_file=f'{norm_prefix}norms.txt', 
-                                    disable=True, 
-                                    validate = {'x_test':x_test, 'y_test':y_test, 't':t, 'scaler':scaler, 'n_samples':32})
-                                            
-                    model.save()
-                    utils.add_finished_to_line(started_file_path, file_prefix)
-                    utils.test(model, scaler, x_test, y_test, t, ode_name, region, test_season, num, n_samples = 128, file_name='results_table.csv')
-
+                        for i in range(2,5):
+                            eval_pts = [0,7,14,21,28][:i]
+                            time_steps = t[:(eval_pts[-1]+1)]
+                            
+                            model.train(train_loader, 
+                                        time_steps, 
+                                        int(epochs/4), 
+                                        losses, 
+                                        eval_pts, 
+                                        n_samples = n_samples, 
+                                        grad_lim=5000, 
+                                        checkpoint=True, 
+                                        track_norms=True, 
+                                        norm_file=f'{norm_prefix}norms.txt', 
+                                        disable=True, 
+                                        validate = {'x_test':x_test, 'y_test':y_test, 't':t, 'scaler':scaler, 'n_samples':32})
+                                                
+                        model.save()
+                        utils.append_to_line(started_file_path, file_prefix, append = 'finished')
+                        utils.test(model, scaler, x_test, y_test, t, ode_name, region, test_season, num, n_samples = 128, file_name='results_table.csv')
+                    except:
+                        utils.append_to_line(started_file_path, file_prefix, append = 'failed')
                         
                 
