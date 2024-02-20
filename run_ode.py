@@ -40,7 +40,6 @@ batch_size = 32
 lr = 1e-3
 n_samples = 64
 eval_pts = np.arange(0,t.shape[-1], 7)
-epochs = 250
 
 # model training info
 training_info =   {
@@ -85,10 +84,11 @@ region_info = {
     }
 }
 
-ode_names = ['SONN', 'CONN', 'UONN']
-test_seasons = [2015, 2016, 2017, 2018]
-regions = ['US']
-nums = [10,11,12]
+ode_names = ['SONN', 'CONN', 'UONN', 'SONNb', 'CONNb', 'UONNb']
+test_seasons = [2015,2016,2017,2018]
+regions = ['US', 'hhs', 'state']
+nums = [10,11,12,13,14]
+uncertainty=True
 
 started_file_path = "started.txt"
 
@@ -99,9 +99,9 @@ for num in nums:
                 # setup files
                 ode = {'CONN':Fp, 'UONN':FaFp, 'SONN':Fa, 'CONNb':Bayes_Fp, 'UONNb':Bayes_FaFp, 'SONNb':Bayes_Fa}[ode_name]
 
-                file_prefix = f'weights/{region}/pre_trained_{ode_name}/{test_season}_{num}_'
-                norm_prefix = f'norms/{region}/pre_trained_{ode_name}/{test_season}_{num}_'
-                chkpt_prefix = f'chkpts/{region}/pre_trained_{ode_name}/{test_season}_{num}_'
+                file_prefix = f'weights/{region}/{ode_name}/{test_season}_{num}_'
+                norm_prefix = f'norms/{region}/{ode_name}/{test_season}_{num}_'
+                chkpt_prefix = f'chkpts/{region}/{ode_name}/{test_season}_{num}_'
             
                 # check if already running
                 lock_path = started_file_path + ".lock"
@@ -111,9 +111,9 @@ for num in nums:
                         content = file.read().splitlines()
                     
                     for c in content:
+                        a=1
                         if file_prefix in c:
                             run = False
-
                     if run:
                         with open(started_file_path, 'a') as file:
                             file.write(file_prefix + '\n')
@@ -156,12 +156,16 @@ for num in nums:
                                     losses, 
                                     eval_pts, 
                                     n_samples = n_samples, 
-                                    grad_lim=1e3, 
+                                    grad_lim=5000, 
                                     checkpoint=True, 
                                     track_norms=True, 
                                     norm_file=f'{norm_prefix}norms.txt', 
-                                    disable=False, 
-                                    validate = {'x_test':x_test, 'y_test':y_test, 't':t, 'scaler':scaler, 'n_samples':128})
+                                    disable=True, 
+                                    validate = {'x_test':x_test, 'y_test':y_test, 't':t, 'scaler':scaler, 'n_samples':32})
                                             
                     model.save()
                     utils.add_finished_to_line(started_file_path, file_prefix)
+                    utils.test(model, scaler, x_test, y_test, t, ode_name, region, test_season, num, n_samples = 128, file_name='results_table.csv')
+
+                        
+                
