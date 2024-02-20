@@ -68,28 +68,27 @@ class Dense_Variational(nn.Module):
 
 
 class Bayes_Fp(nn.Module):
-    def __init__(self, n_region=1, latent_dim=8, nhidden=20, **kwargs):
+    def __init__(self, n_regions=1, latent_dim=8, net_sizes=[20, 20], prior_std=0.1, **kwargs):
         super(Bayes_Fp, self).__init__()
 
-        self.n_region = n_region
+        self.n_regions = n_regions
         self.latent_dim = latent_dim
         self.ode_type = 'Fp'
         self.uncertainty = 'bayes'
 
-        self.Fp_net = nn.Sequential(
-            nn.Flatten(),
-            Dense_Variational(n_region*latent_dim, nhidden),
-            nn.ELU(inplace=True),
-            Dense_Variational(nhidden, nhidden),
-            nn.ELU(inplace=True),
-            Dense_Variational(nhidden, 2*n_region),
-        )
+        self.Fp_net = nn.ModuleList()
+        self.Fp_net.append(nn.Flatten())
+        self.Fp_net.append(Dense_Variational(n_regions * latent_dim, net_sizes[0], prior_std=prior_std))
+        for l in range(1, len(net_sizes)):
+            self.Fp_net.append(nn.ELU(inplace=True))
+            self.Fp_net.append(Dense_Variational(net_sizes[l - 1], net_sizes[l], prior_std=prior_std))
+        self.Fp_net.append(Dense_Variational(net_sizes[-1], 2 * n_regions, prior_std=prior_std))
         
         self.params = []
 
     def forward(self, t, x):
         out_of_range_mask = (x > 2) | (x < -1)
-        out = torch.abs(self.Fp_net(x)).reshape(-1, self.n_region, 2)
+        out = torch.abs(self.Fp_net(x)).reshape(-1, self.n_regions, 2)
         
         self.params.append(out)
 
@@ -126,7 +125,7 @@ class Bayes_Fp(nn.Module):
 
 
 class Bayes_Fa(nn.Module):
-    def __init__(self, n_regions=1, latent_dim=8, net_sizes=[32, 32], aug_net_sizes=[32, 32], nhidden_fa=32, **kwargs):
+    def __init__(self, n_regions=1, latent_dim=8, net_sizes=[32, 32], aug_net_sizes=[32, 32], nhidden_fa=32, prior_std=0.1, **kwargs):
         super(Bayes_Fa, self).__init__()
         self.ode_type = 'Fa'
         self.uncertainty = 'bayes'
@@ -136,11 +135,11 @@ class Bayes_Fa(nn.Module):
         self.flatten = nn.Flatten()
 
         self.aug_net = nn.ModuleList()
-        self.aug_net.append(Dense_Variational(n_regions * latent_dim, aug_net_sizes[0]))
+        self.aug_net.append(Dense_Variational(n_regions * latent_dim, aug_net_sizes[0], prior_std=prior_std))
         for l in range(1, len(aug_net_sizes)):
             self.aug_net.append(nn.ELU(inplace=True))
-            self.aug_net.append(Dense_Variational(aug_net_sizes[l - 1], aug_net_sizes[l]))
-        self.aug_net.append(Dense_Variational(aug_net_sizes[-1], 3 * n_regions))
+            self.aug_net.append(Dense_Variational(aug_net_sizes[l - 1], aug_net_sizes[l], prior_std=prior_std))
+        self.aug_net.append(Dense_Variational(aug_net_sizes[-1], 3 * n_regions, prior_std=prior_std))
 
         self.params = []
         self.tracker = []
@@ -180,7 +179,7 @@ class Bayes_Fa(nn.Module):
         return kl
 
 class Bayes_FaFp(nn.Module):
-    def __init__(self, n_regions=1, latent_dim=8, net_sizes=[20, 20], aug_net_sizes=[32, 32], prior_std=1.0, **kwargs):
+    def __init__(self, n_regions=1, latent_dim=8, net_sizes=[20, 20], aug_net_sizes=[32, 32], prior_std=0.1, **kwargs):
         super(Bayes_FaFp, self).__init__()
 
         self.n_regions = n_regions
@@ -188,13 +187,13 @@ class Bayes_FaFp(nn.Module):
         self.ode_type = 'FaFp'
         self.uncertainty = 'bayes'
 
-        self.net = nn.ModuleList()
-        self.net.append(nn.Flatten())
-        self.net.append(Dense_Variational(n_regions * latent_dim, net_sizes[0], prior_std=prior_std))
+        self.Fp_net = nn.ModuleList()
+        self.Fp_net.append(nn.Flatten())
+        self.Fp_net.append(Dense_Variational(n_regions * latent_dim, net_sizes[0], prior_std=prior_std))
         for l in range(1, len(net_sizes)):
-            self.net.append(nn.ELU(inplace=True))
-            self.net.append(Dense_Variational(net_sizes[l - 1], net_sizes[l], prior_std=prior_std))
-        self.net.append(Dense_Variational(net_sizes[-1], 2 * n_regions, prior_std=prior_std))
+            self.Fp_net.append(nn.ELU(inplace=True))
+            self.Fp_net.append(Dense_Variational(net_sizes[l - 1], net_sizes[l], prior_std=prior_std))
+        self.Fp_net.append(Dense_Variational(net_sizes[-1], 2 * n_regions, prior_std=prior_std))
 
 
         self.aug_net = nn.ModuleList()
@@ -214,7 +213,7 @@ class Bayes_FaFp(nn.Module):
         out_of_range_mask = (x > 2) | (x < -1)
 
         out = x
-        for layer in self.net:
+        for layer in self.Fp_net:
             out = layer(out)
         out = torch.abs(out).reshape(-1, self.n_regions, 2)
         
