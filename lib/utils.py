@@ -47,7 +47,7 @@ def test(model, scaler, x_test, y_test, t, ode_name, region, test_season, num, n
 		results_df.loc[idx, f'{test_season} {g}'] = Metrics.nll(y_te[:, g, :], pred_mean[:, g, :], pred_std[:, g, :])
 	results_df.to_csv(file_name)
 
-def add_finished_to_line(file_path, line_prefix):
+def append_to_line(file_path, line_prefix, append = 'finished'):
     with FileLock(file_path + ".lock"):
         with open(file_path, 'r') as file:
             lines = file.readlines()
@@ -55,8 +55,9 @@ def add_finished_to_line(file_path, line_prefix):
         with open(file_path, 'w') as file:
             for line in lines:
                 if line.startswith(line_prefix):
-                    line = line.rstrip('\n') + ' finished\n'
+                    line = line.rstrip('\n') + ' '+append+'\n'
                 file.write(line)
+
 
 def makedirs(dirname):
 	if not os.path.exists(dirname):
