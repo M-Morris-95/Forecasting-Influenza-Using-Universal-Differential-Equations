@@ -18,7 +18,7 @@ def smooth(df, n=7):
                             data = np.mean(np.asarray([df[i:-(n-i)] for i in range(n)]), 0))
     return smoothed       
 
-def get_state_query_data(num, root = '../google_queries/', append = 'state_queries_new', ignore = [], return_all = False, smooth_after = False):
+def get_state_query_data(num, root = 'Data/', append = 'Queries/state_queries', ignore = [], return_all = False, smooth_after = False):
     state_codes = {'AK':'Alaska','AL':'Alabama','AR':'Arkansas','AZ':'Arizona','CA':'California','CO':'Colorado','CT':'Connecticut','DE':'Delaware','DC':'District of Columbia','GA':'Georgia','HI':'Hawaii','ID':'Idaho','IL':'Illinois','IN':'Indiana','IA':'Iowa','KS':'Kansas','KY':'Kentucky','LA':'Louisiana','ME':'Maine','MD':'Maryland','MI':'Michigan','MN':'Minnesota','MS':'Mississippi','MO':'Missouri','MT':'Montana','NE':'Nebraska','NV':'Nevada','NH':'New Hampshire','NJ':'New Jersey','NM':'New Mexico','NY':'New York','NC':'North Carolina','ND':'North Dakota','OH':'Ohio','OK':'Oklahoma','OR':'Oregon','PA':'Pennsylvania','RI':'Rhode Island','SC':'South Carolina','SD':'South Dakota','TN':'Tennessee','TX':'Texas','UT':'Utah','VT':'Vermont','VA':'Virginia','WA':'Washington','WV':'West Virginia','WI':'Wisconsin','WY':'Wyoming'}
     
     code = list(state_codes.keys())[num-1]
@@ -30,7 +30,7 @@ def get_state_query_data(num, root = '../google_queries/', append = 'state_queri
         
     return df    
 
-def get_hhs_query_data(num, root = '../google_queries/', append = 'state_queries_new', ignore = [], return_all = False, smooth_after = False):
+def get_hhs_query_data(num, root = 'Data/', append = 'Queries/state_queries', ignore = [], return_all = False, smooth_after = False):
     state_pop = pd.read_csv(root + 'state_population_data_2019.csv', index_col = 0)
     state_dict =  {1:['CT', 'ME', 'MT', 'NH', 'RI', 'VT'],
                    2:['NY', 'NJ'],
@@ -75,8 +75,8 @@ def get_hhs_query_data(num, root = '../google_queries/', append = 'state_queries
     return df    
 
     
-def get_nat_query_data(num, root = 'Data/', append = 'Queries/', ignore = [], return_all = False, smooth_after = False):
-    df = pd.read_csv(root+append +'US_query_data_all_smoothed.csv', index_col=0, parse_dates=True)
+def get_nat_query_data(num, root = 'Data/Queries/',  ignore = [], return_all = False, smooth_after = False):
+    df = pd.read_csv(root +'US_query_data_all_smoothed.csv', index_col=0, parse_dates=True)
     return df
         
 
