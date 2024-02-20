@@ -107,28 +107,28 @@ class Encoder_Back_GRU(nn.Module):
             return x
 
 class Fp(nn.Module):
-    def __init__(self, n_region=1, latent_dim=8, nhidden=20, **kwargs):
+    def __init__(self, n_regions=1, latent_dim=8, nhidden=20, **kwargs):
         super(Fp, self).__init__()
 
-        self.n_region = n_region
+        self.n_regions = n_regions
         self.latent_dim = latent_dim
         self.ode_type = 'Fp'
         self.uncertainty = 'none'
 
         self.Fp_net = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(n_region*latent_dim, nhidden),
+            nn.Linear(n_regions*latent_dim, nhidden),
             nn.ELU(inplace=True),
             nn.Linear(nhidden, nhidden),
             nn.ELU(inplace=True),
-            nn.Linear(nhidden, 2*n_region),
+            nn.Linear(nhidden, 2*n_regions),
         )
         
         self.params = []
 
     def forward(self, t, x):
         out_of_range_mask = (x > 2) | (x < -1)
-        out = torch.abs(self.Fp_net(x)).reshape(-1, self.n_region, 2)
+        out = torch.abs(self.Fp_net(x)).reshape(-1, self.n_regions, 2)
         
         self.params.append(out)
 
