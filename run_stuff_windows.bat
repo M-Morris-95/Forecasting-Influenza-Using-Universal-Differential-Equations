@@ -1,6 +1,6 @@
 @echo off
 
-set SCRIPT=testing_no_interpolation.py
+set SCRIPT=run_ode.py
 
 for /l %%i in (1, 1, 10) do (
   start cmd /c "python %SCRIPT% %%i"
