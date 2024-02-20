@@ -107,7 +107,7 @@ class Encoder_Back_GRU(nn.Module):
             return x
 
 class Fp(nn.Module):
-    def __init__(self, n_regions=1, latent_dim=8, nhidden=20, **kwargs):
+    def __init__(self, n_regions=1, latent_dim=8, net_sizes=[20, 20], **kwargs):
         super(Fp, self).__init__()
 
         self.n_regions = n_regions
@@ -115,20 +115,24 @@ class Fp(nn.Module):
         self.ode_type = 'Fp'
         self.uncertainty = 'none'
 
-        self.Fp_net = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(n_regions*latent_dim, nhidden),
-            nn.ELU(inplace=True),
-            nn.Linear(nhidden, nhidden),
-            nn.ELU(inplace=True),
-            nn.Linear(nhidden, 2*n_regions),
-        )
+        self.Fp_net = nn.ModuleList()
+        self.Fp_net.append(nn.Flatten())
+        self.Fp_net.append(nn.Linear(n_regions * latent_dim, net_sizes[0]))
+        for l in range(1, len(net_sizes)):
+            self.Fp_net.append(nn.ELU(inplace=True))
+            self.Fp_net.append(nn.Linear(net_sizes[l - 1], net_sizes[l]))
+        self.Fp_net.append(nn.Linear(net_sizes[-1], 2 * n_regions))
+        
         
         self.params = []
 
     def forward(self, t, x):
         out_of_range_mask = (x > 2) | (x < -1)
-        out = torch.abs(self.Fp_net(x)).reshape(-1, self.n_regions, 2)
+
+        out = x
+        for layer in self.Fp_net:
+            out = layer(out)
+        out = torch.abs(out).reshape(-1, self.n_regions, 2)
         
         self.params.append(out)
 
