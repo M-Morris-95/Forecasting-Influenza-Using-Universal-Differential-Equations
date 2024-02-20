@@ -160,15 +160,14 @@ def intepolate_ili(ili, fill_1=False):
         return pd.DataFrame(index=dates, columns=ili.columns, data=ili)
 
 class DataConstructor:
-    def __init__(self, test_season, region = 'hhs', window_size = 28, n_queries = 10, gamma = 28, window = 28, lag = 14, n_regions=10, fill_1 = False, root = 'checkpoints/HHS_SIR_Big_new/' ):
+    def __init__(self, test_season, region = 'hhs', n_queries = 10, gamma = 28, window_size = 28, lag = 14, n_regions=10, fill_1 = False, root = 'checkpoints/HHS_SIR_Big_new/' ):
 
         self.lag = lag
-        self.window = window
+        self.window_size = window_size
         self.root = root
         self.n_regions = n_regions
         self.test_season = test_season
         self.region = region
-        self.window_size = window_size
         self.n_queries = n_queries
         self.gamma = gamma
         self.fill_1 = fill_1
@@ -220,12 +219,12 @@ class DataConstructor:
         inputs = []
         outputs = []
         dates = []
-        for batch in range(self.window+1, ili.shape[0] - (self.gamma)):
+        for batch in range(self.window_size+1, ili.shape[0] - (self.gamma)):
             batch_inputs = []
             for i in range(1,1+self.n_regions):
-                batch_inputs.append(qs_data_dict[i].iloc[batch-self.window-1:batch+self.lag-1])
+                batch_inputs.append(qs_data_dict[i].iloc[batch-self.window_size-1:batch+self.lag-1])
             
-            t_ili = ili.iloc[batch-self.window-1:batch+self.lag-1].copy()
+            t_ili = ili.iloc[batch-self.window_size-1:batch+self.lag-1].copy()
             t_ili.iloc[-self.lag:, :] = -1
 
             batch_inputs.append(t_ili)
@@ -235,8 +234,8 @@ class DataConstructor:
             batch_outputs = []
             for i in range(1,1+self.n_regions):
                 if run_backward:
-                    batch_outputs.append(qs_data_dict[i].iloc[batch-self.window-1:batch+self.gamma])     
-                    t_ili = ili.iloc[batch-self.window-1:batch+self.gamma].copy()
+                    batch_outputs.append(qs_data_dict[i].iloc[batch-self.window_size-1:batch+self.gamma])     
+                    t_ili = ili.iloc[batch-self.window_size-1:batch+self.gamma].copy()
                 else:
                     batch_outputs.append(qs_data_dict[i].iloc[batch:batch+self.gamma])            
                     t_ili = ili.iloc[batch:batch+self.gamma].copy()
