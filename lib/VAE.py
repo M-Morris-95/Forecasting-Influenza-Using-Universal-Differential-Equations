@@ -5,6 +5,7 @@ from itertools import chain
 from torchdiffeq import odeint
 import lib.train_functions as train_functions
 from torch.distributions import Normal
+from lib.in_development.models_bayes import Dense_Variational
 import lib.models as models
 import lib.Metrics as Metrics
 
@@ -90,7 +91,16 @@ class VAE:
         self.batch_grad_norms = []
         self.prior_params = prior_params
         self.started = False
-        
+
+    def update_priors(self, new_std = 0.1):
+        for net in [self.ode.aug_net, self.ode.Fp_net]:
+            try:
+                for name, layer in net.named_modules():
+                    if isinstance(layer, Dense_Variational):
+                        layer.prior_std = new_std    
+            except:
+                pass
+
     def setup_training(self, lr = 1e-3):
         self.optimizer = torch.optim.Adam(chain(self.enc.parameters(), 
                                                 self.ode.parameters(), 
