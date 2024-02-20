@@ -197,8 +197,12 @@ class VAE:
         grad_norm = torch.norm(torch.cat([p.grad.data.view(-1) for p in chain(self.enc.parameters(), self.ode.parameters(), self.dec.parameters())]), 2).item()
         self.batch_grad_norms.append(grad_norm)
 
-        if grad_norm < grad_lim or epoch <= 3:
-                self.optimizer.step()
+        if grad_norm < grad_lim or self.skip_count >= 4 or epoch <= 3:
+            self.optimizer.step()
+            self.skip_count = 0
+        else:
+            self.skip_count = self.skip_count + 1
+
         batch_data.append(round(grad_norm, 1))
         batch_names.append('grad_norm')
 
@@ -234,7 +238,9 @@ class VAE:
                 print(f"{'Epoch':<8}: {round(epoch, 3):.3f}, {'KL_z':<8}: {round(np.mean(kls), 3):.3f}")
 
     def train(self, train_loader, t, epochs, losses, eval_pts, grad_lim=300, n_samples=32, checkpoint=False, track_norms = False, norm_file = 'grad_norms.txt', disable=False, validate = None): 
-        self.best_loss = 1e9     
+        self.best_loss = 1e9 
+        self.skip_count = 0
+
         for epoch in range(epochs):
             pbar = tqdm.tqdm(train_loader, desc="Training " + str(epoch+1), leave=True, disable=disable)    
             self.norms = []
@@ -254,7 +260,7 @@ class VAE:
     
                 pred_mean = y_pr.mean(1)
                 pred_std = y_pr.std(1)
-                nlls = [Metrics.nll(y_te[:, g, :], pred_mean[:, g, :], pred_std[:, g, :]) for g in range(57)]
+                nlls = [Metrics.nll(y_te[:, g, :], pred_mean[:, g, :], pred_std[:, g, :]) for g in range(len(t))]
                 
                 self._history.epoch_history[-1]['forecast_nll'] =  np.mean(nlls[-28:])
                 self._history.epoch_history[-1]['all_nll'] =  np.mean(nlls)
