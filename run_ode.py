@@ -168,7 +168,7 @@ for epochs in epoch_ls:
                                                     
                             model.save()
                             utils.append_to_line(started_file_path, file_prefix, append = 'finished')
-                            utils.test(model, scaler, x_test, y_test, t, variables = {'epochs':epochs, 'ode_name':ode_name, 'region':region, 'test_season':test_season, 'num':num}, n_samples = 128, file_name='results_table.csv')
+                            utils.test(model, scaler, x_test, y_test, t, test_season=test_season, variables = {'epochs':epochs, 'ode_name':ode_name, 'region':region, 'num':num}, n_samples = 128, file_name='results_table.csv')
                         except:
                             utils.append_to_line(started_file_path, file_prefix, append = 'failed')
                         

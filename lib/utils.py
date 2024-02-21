@@ -22,9 +22,7 @@ import lib.Metrics as Metrics
 
 from filelock import FileLock
                
-def test(model, scaler, x_test, y_test, t, variables = {'test_season':2015}, n_samples = 128, file_name='results_table.csv'):
-
-	# ode_name, region, test_season, num,
+def test(model, scaler, x_test, y_test, t, test_season, variables = {'ode_name':'CONN'}, n_samples = 128, file_name='results_table.csv'):
 	y_pred = model(x_test, t, n_samples=n_samples, training = False)
 	y_pr = y_pred.detach().numpy() * scaler.values[np.newaxis, np.newaxis, np.newaxis, :]
 	y_te = y_test.detach().numpy() * scaler.values[np.newaxis, np.newaxis, :]
@@ -54,7 +52,7 @@ def test(model, scaler, x_test, y_test, t, variables = {'test_season':2015}, n_s
 		results_df.loc[idx, key] = value
 
 	for g in [7,14,21,28]:
-		results_df.loc[idx, f"{variables['test_season']} {g}"] = Metrics.nll(y_te[:, g, :], pred_mean[:, g, :], pred_std[:, g, :])
+		results_df.loc[idx, f"{test_season} {g}"] = Metrics.nll(y_te[:, g, :], pred_mean[:, g, :], pred_std[:, g, :])
 
 	results_df.to_csv(file_name)
 
