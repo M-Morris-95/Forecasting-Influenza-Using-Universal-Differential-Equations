@@ -124,7 +124,7 @@ for epochs in epoch_ls:
                                     
                     if run:      
                         try:      
-                            print(region, ode_name, test_season, num)
+                            print(region, ode_name, test_season, epochs, num)
 
                             # make folders
                             utils.make_file(chkpt_prefix)
