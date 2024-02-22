@@ -53,6 +53,7 @@ def test(model, scaler, x_test, y_test, t, test_season, variables = {'ode_name':
 
 	for g in [7,14,21,28]:
 		results_df.loc[idx, f"{test_season} {g}"] = Metrics.nll(y_te[:, g, :], pred_mean[:, g, :], pred_std[:, g, :])
+		results_df.loc[idx, f"skill {test_season} {g}"] = Metrics.skill(y_te[:, g, :], pred_mean[:, g, :], pred_std[:, g, :])
 
 	results_df.to_csv(file_name)
 
