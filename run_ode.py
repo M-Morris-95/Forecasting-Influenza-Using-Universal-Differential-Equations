@@ -58,7 +58,7 @@ region_info = {
     'state': {
         'n_regions': 49,
         'latent_dim': 8,
-        'n_qs':5,
+        'n_qs':8,
         'ode_params':{'net_sizes': [64, 64, 32],  'aug_net_sizes': [64, 64], 'prior_std' : 0.05},
         'dec_params':{},
         'enc_params':{'q_sizes':[256, 128], 'ff_sizes':[64,64], 'SIR_scaler':[0.1, 0.05, 1.0]},
@@ -67,7 +67,7 @@ region_info = {
     'hhs': {
         'n_regions': 10,
         'latent_dim': 8,
-        'n_qs':9,
+        'n_qs':15,
         'ode_params':{'net_sizes': [64, 64, 32],  'aug_net_sizes': [64, 64], 'prior_std' : 0.05},
         'dec_params':{},
         'enc_params':{'q_sizes':[256, 128], 'ff_sizes':[64,64], 'SIR_scaler':[0.1, 0.05, 1.0]},
@@ -75,7 +75,7 @@ region_info = {
     },
     'US': {
         'n_regions': 1,
-        'latent_dim': 8,
+        'latent_dim': 12,
         'n_qs':90,
         'ode_params':{'net_sizes': [64, 64, 32],  'aug_net_sizes': [64, 64], 'prior_std' : 0.05},
         'dec_params':{},
@@ -84,11 +84,11 @@ region_info = {
     }
 }
 
-ode_names = ['SONN', 'CONN', 'UONN', 'SONNb', 'CONNb', 'UONNb']
+ode_names = ['CONN', 'UONN', 'CONNb', 'UONNb']
 test_seasons = [2015,2016,2017,2018]
 regions = ['US', 'hhs', 'state']
-regions = ['US']
-epoch_ls = [20,40,60,80,100]
+regions = ['hhs', 'US']
+epoch_ls = [220,240,260, 280,300,350,400]
 nums = [15,16,17,18,19]
 uncertainty=True
 
@@ -168,7 +168,7 @@ for epochs in epoch_ls:
                                                     
                             model.save()
                             utils.append_to_line(started_file_path, file_prefix, append = 'finished')
-                            utils.test(model, scaler, x_test, y_test, t, test_season=test_season, variables = {'epochs':epochs, 'ode_name':ode_name, 'region':region, 'num':num}, n_samples = 128, file_name='results_table.csv')
+                            utils.test(model, scaler, x_test, y_test, t, test_season=test_season, variables = {'epochs':epochs, 'ode_name':ode_name, 'region':region, 'latent_dim':latent_dim, 'num':num}, n_samples = 128, file_name='results_table.csv')
                         except:
                             utils.append_to_line(started_file_path, file_prefix, append = 'failed')
                         
