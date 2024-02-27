@@ -6,8 +6,16 @@ from torchdiffeq import odeint
 import lib.train_functions as train_functions
 from torch.distributions import Normal
 from lib.in_development.models_bayes import Dense_Variational
+from torch.optim.lr_scheduler import LambdaLR
 import lib.models as models
 import lib.Metrics as Metrics
+
+# Define the warm-up function
+def warm_up_lr(epoch):
+    if epoch < 10:
+        return 1e-3 * (epoch + 1) / 10
+    else:
+        return 1e-3
 
 def print_rounded_dict(dictionary, decimals=3):
     formatted_dict = {key: round(value, decimals) if isinstance(value, (int, float)) else value for key, value in dictionary.items()}
@@ -157,20 +165,20 @@ class VAE:
                                
         if losses.get('kl_z', True):
             kl_z = self.kl_w * train_functions.kl_divergence(models.make_prior(self.mean, latent_dim=self.ld_ode, device=self.device), Normal(self.mean, self.std)).sum(-1).mean() / self.len_tr
-            loss = loss+ kl_z
+            loss = loss + kl_z
             batch_data.append(round(kl_z.cpu().item(), 3))
             batch_names.append('kl_latent')
 
         if losses.get('kl_p', True):
             kl_p = train_functions.get_kl_params(1, self.ode.posterior(), means=self.prior_params['means'],
                                                 stds=self.prior_params['stds'], limit=1e6, device=self.device)
-            loss = loss+ kl_p
+            loss = loss + kl_p
             batch_data.append(round(kl_p.cpu().item(), 3))
             batch_names.append('kl_params')
         
-        if losses.get('Fa_norm', True):
+        if losses.get('Fa_norm', 0) > 0:
             norm = torch.norm(torch.stack(self.ode.tracker))
-            loss = loss+ norm
+            loss = loss + losses['Fa_norm'] * norm
             batch_data.append(round(norm.cpu().item(), 3))
             batch_names.append('Fa_norm')
         
@@ -190,6 +198,9 @@ class VAE:
         return loss, batch_data, batch_names
 
     def train_step(self, x, y, t, epoch, losses, eval_pts, grad_lim = 300, n_samples=32, track_norms = False, norm_file = 'grad_norms.txt'):
+        
+
+
         y_pred = self(x, t[eval_pts], n_samples=n_samples, training = True)
         loss, batch_data, batch_names = self.calc_loss(y_pred, y[:, eval_pts, :], losses=losses)
         loss.backward()
@@ -237,11 +248,16 @@ class VAE:
             if disable:
                 print(f"{'Epoch':<8}: {round(epoch, 3):.3f}, {'KL_z':<8}: {round(np.mean(kls), 3):.3f}")
 
-    def train(self, train_loader, t, epochs, losses, eval_pts, grad_lim=300, n_samples=32, checkpoint=False, track_norms = False, norm_file = 'grad_norms.txt', disable=False, validate = None): 
+    def train(self, train_loader, t, epochs, losses, eval_pts, grad_lim=300, n_samples=32, checkpoint=False, track_norms = False, norm_file = 'grad_norms.txt', disable=False, warmup=False, validate = None): 
         self.best_loss = 1e9 
         self.skip_count = 0
 
+        if warmup:
+            scheduler = LambdaLR(self.optimizer, lr_lambda=warm_up_lr)
+
         for epoch in range(epochs):
+
+
             pbar = tqdm.tqdm(train_loader, desc="Training " + str(epoch+1), leave=True, disable=disable)    
             self.norms = []
             
@@ -249,6 +265,8 @@ class VAE:
                 loss_data = self.train_step(x, y, t, epoch, losses, eval_pts, grad_lim=grad_lim, n_samples=n_samples, track_norms=track_norms, norm_file=norm_file)
                 self._history.batch(loss_data[0], loss_data[1])
                 pbar.set_postfix(self._history.epoch())
+            if warmup:
+                scheduler.step()
                 
             self._history.reset()
             
