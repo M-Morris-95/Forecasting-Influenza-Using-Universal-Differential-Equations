@@ -21,41 +21,45 @@ import numpy as np
 import lib.Metrics as Metrics
 
 from filelock import FileLock
+
+def test(model, scaler, x_test, y_test, t, test_season, variables={'ode_name': 'CONN'}, n_samples=128, file_name='results_table'):
+    y_pred = model(x_test, t, n_samples=n_samples, training=False)
+    y_pr = y_pred.detach().numpy() * scaler.values[np.newaxis, np.newaxis, np.newaxis, :]
+    y_te = y_test.detach().numpy() * scaler.values[np.newaxis, np.newaxis, :]
+
+    pred_mean = y_pr.mean(1)
+    pred_std = y_pr.std(1)
+
+    lock_path = file_name + ".lock"
+
+    with FileLock(lock_path):
+        results_df = pd.read_csv(file_name + '.csv', index_col=0)
+
+        common_indices = None
+        for key, value in variables.items():
+            try:
+                indices = np.where(results_df[key] == value)[0]
+                if common_indices is None:
+                    common_indices = indices
+                else:
+                    common_indices = np.intersect1d(common_indices, indices)
+            except:
+                pass
+
+        if len(common_indices) > 0:
+            idx = np.min(common_indices)
+        else:
+            idx = np.max(results_df.index) + 1
+
+        for key, value in variables.items():
+            results_df.loc[idx, key] = value
+
+        for g in [7, 14, 21, 28]:
+            results_df.loc[idx, f"{test_season} {g}"] = Metrics.nll(y_te[:, g, :], pred_mean[:, g, :], pred_std[:, g, :])
+            results_df.loc[idx, f"skill {test_season} {g}"] = Metrics.skill(y_te[:, g, :], pred_mean[:, g, :], pred_std[:, g, :])
+
+        results_df.to_csv(file_name + '.csv')
                
-def test(model, scaler, x_test, y_test, t, test_season, variables = {'ode_name':'CONN'}, n_samples = 128, file_name='results_table.csv'):
-	y_pred = model(x_test, t, n_samples=n_samples, training = False)
-	y_pr = y_pred.detach().numpy() * scaler.values[np.newaxis, np.newaxis, np.newaxis, :]
-	y_te = y_test.detach().numpy() * scaler.values[np.newaxis, np.newaxis, :]
-
-	pred_mean = y_pr.mean(1)
-	pred_std = y_pr.std(1)
-
-	results_df = pd.read_csv(file_name, index_col = 0)
-	
-	common_indices = None
-	for key, value in variables.items():
-		try:
-			indices = np.where(results_df[key] == value)[0]
-			if common_indices is None:
-				common_indices = indices
-			else:
-				common_indices = np.intersect1d(common_indices, indices)
-		except:
-			pass
-
-	if len(common_indices) > 0:
-		idx = np.min(common_indices)
-	else:
-		idx = np.max(results_df.index)+1
-
-	for key, value in variables.items():
-		results_df.loc[idx, key] = value
-
-	for g in [7,14,21,28]:
-		results_df.loc[idx, f"{test_season} {g}"] = Metrics.nll(y_te[:, g, :], pred_mean[:, g, :], pred_std[:, g, :])
-		results_df.loc[idx, f"skill {test_season} {g}"] = Metrics.skill(y_te[:, g, :], pred_mean[:, g, :], pred_std[:, g, :])
-
-	results_df.to_csv(file_name)
 
 def append_to_line(file_path, line_prefix, append = 'finished'):
     with FileLock(file_path + ".lock"):
