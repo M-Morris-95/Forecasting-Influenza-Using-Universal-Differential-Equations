@@ -84,7 +84,7 @@ training_info =   {
 ode_names = ['CONN', 'UONN']
 test_seasons = [2015,2016,2017,2018]
 regions = ['US', 'hhs', 'state']
-epoch_ls = [140,200,260]
+epoch_ls = [1, 140,200,260]
 nums = [15,16,17,18,19]
 uncertainty=True
 
@@ -115,9 +115,10 @@ for gamma in [35,42,49,56]:
                                     a=1
                                     if file_prefix in c:
                                         run = False
-                                if run:
-                                    with open(started_file_path, 'a') as file:
-                                        file.write(file_prefix + '\n')
+                                # if run:
+                                #     with open(started_file_path, 'a') as file:
+                                #         file.write(file_prefix + '\n')
+                                run = True
                             if run:      
                                 try:      
                                     print(region, ode_name, test_season, epochs, num)
@@ -162,9 +163,9 @@ for gamma in [35,42,49,56]:
                                         print('done')                    
                                     model.save()
                                     
-                                    utils.test(model, scaler, x_test, y_test, t, test_season=test_season, variables = {'epochs':epochs, 'gamma':gamma, 'ode_name':ode_name, 'region':region, 'latent_dim':latent_dim, 'num':num}, n_samples = 128, file_name='results_table.csv')
-                                    utils.append_to_line(started_file_path, file_prefix, append = 'finished')
+                                    utils.test(model, scaler, x_test, y_test, t, test_season=test_season, variables = {'epochs':epochs, 'gamma':gamma, 'ode_name':ode_name, 'region':region, 'latent_dim':latent_dim, 'num':num}, n_samples = 128, file_name='results_table_server.csv')
+                                    # utils.append_to_line(started_file_path, file_prefix, append = 'finished')
                                 except:
-                                    utils.append_to_line(started_file_path, file_prefix, append = 'failed')
+                                    # utils.append_to_line(started_file_path, file_prefix, append = 'failed')
                                     pass
                         
