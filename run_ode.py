@@ -81,7 +81,7 @@ training_info =   {
 ode_names = ['CONN', 'UONN']
 test_seasons = [2015,2016,2017,2018]
 regions = ['US', 'hhs', 'state']
-epoch_ls = [10,140,200,260]
+epoch_ls = [140,200,260]
 nums = [15,16,17,18,19]
 uncertainty=True
 
