@@ -198,9 +198,6 @@ class VAE:
         return loss, batch_data, batch_names
 
     def train_step(self, x, y, t, epoch, losses, eval_pts, grad_lim = 300, n_samples=32, track_norms = False, norm_file = 'grad_norms.txt'):
-        
-
-
         y_pred = self(x, t[eval_pts], n_samples=n_samples, training = True)
         loss, batch_data, batch_names = self.calc_loss(y_pred, y[:, eval_pts, :], losses=losses)
         loss.backward()
@@ -251,13 +248,13 @@ class VAE:
     def train(self, train_loader, t, epochs, losses, eval_pts, grad_lim=300, n_samples=32, checkpoint=False, track_norms = False, norm_file = 'grad_norms.txt', disable=False, warmup=False, validate = None): 
         self.best_loss = 1e9 
         self.skip_count = 0
+        start_epoch = len(self._history.epoch_history)
 
         if warmup:
             scheduler = LambdaLR(self.optimizer, lr_lambda=warm_up_lr)
 
-        for epoch in range(epochs):
-
-
+        for e in range(epochs):
+            epoch = e+start_epoch
             pbar = tqdm.tqdm(train_loader, desc="Training " + str(epoch+1), leave=True, disable=disable)    
             self.norms = []
             
@@ -284,7 +281,7 @@ class VAE:
                 self._history.epoch_history[-1]['all_nll'] =  np.mean(nlls)
                 
             if disable:
-                print(epoch, end = ' ')
+                print(epoch+1, end = ' ')
                 print_rounded_dict(self._history.epoch_history[-1], decimals=3)
                 
             with open(norm_file, 'a') as file:
