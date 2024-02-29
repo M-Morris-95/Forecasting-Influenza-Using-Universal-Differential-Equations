@@ -31,14 +31,11 @@ dtype = torch.float32
 
 # data stuff
 window_size = 1
-gamma = 28
-t = torch.arange(window_size + gamma + 1, dtype=dtype)/7
 
 # training stuff
 batch_size = 32
 lr = 1e-3
 n_samples = 64
-eval_pts = np.arange(0,t.shape[-1], 7)
 
 # model region info 
 region_info = {
@@ -119,7 +116,7 @@ for epochs in epoch_ls:
                                     with open(started_file_path, 'a') as file:
                                         file.write(file_prefix + '\n')
                             if run:      
-                                # try:      
+                                try:      
                                     print(region, ode_name, test_season, epochs, num)
 
                                     # make folders
@@ -128,6 +125,9 @@ for epochs in epoch_ls:
                                     utils.make_file(norm_prefix)
                                 
                                     # setup stuff for models
+                                    t = torch.arange(window_size + gamma + 1, dtype=dtype)/7
+                                    eval_pts = np.arange(0,t.shape[-1], 7)
+
                                     losses = training_info[ode_name]
                                     n_regions = region_info[region]['n_regions']
                                     n_qs = region_info[region]['n_qs']
@@ -142,14 +142,15 @@ for epochs in epoch_ls:
                                     model = VAE(Encoder_Back_GRU, ode, Decoder, n_qs, latent_dim, n_regions, file_prefix=file_prefix, chkpt_prefix=chkpt_prefix, ode_params=ode_params, enc_params=enc_params, dec_params=dec_params, uncertainty=uncertainty, ode_kl_w = 1/153)
                                     model.setup_training(lr=lr)
 
-                                    eval_all = [0,7,14,21,28,35,42,49,56]
-                                    for i in range(2,len(eval_all)):
-                                        eval_pts[:i]
+                                    eval_all = list(np.linspace(0, gamma, int((gamma/7)+1), dtype=int))
+                                    epochs_per_cycle = int(epochs/(len(eval_all)-1))
+                                    for i in range(2,len(eval_all)+1):
+                                        eval_pts = eval_all[:i]
                                         time_steps = t[:(eval_pts[-1]+1)]
                                         
                                         model.train(train_loader, 
                                                     time_steps, 
-                                                    int(epochs/len(eval_all)-1), 
+                                                    epochs_per_cycle, 
                                                     losses, 
                                                     eval_pts, 
                                                     n_samples = n_samples, 
@@ -158,12 +159,12 @@ for epochs in epoch_ls:
                                                     track_norms=True, 
                                                     norm_file=f'{norm_prefix}norms.txt', 
                                                     disable=True, 
-                                                    validate = {'x_test':x_test, 'y_test':y_test, 't':t, 'scaler':scaler, 'n_samples':32})              
+                                                    validate = {'x_test':x_test, 'y_test':y_test, 't':t, 'scaler':scaler, 'n_samples':32})            
                                     model.save()
                                     
                                     utils.test(model, scaler, x_test, y_test, t, test_season=test_season, variables = {'epochs':epochs, 'gamma':gamma, 'ode_name':ode_name, 'region':region, 'latent_dim':latent_dim, 'num':num}, n_samples = 128, file_name='results_table_server')
                                     utils.append_to_line(started_file_path, file_prefix, append = 'finished')
-                                # except:
-                                #     utils.append_to_line(started_file_path, file_prefix, append = 'failed')
-                                #     pass
+                                except:
+                                    utils.append_to_line(started_file_path, file_prefix, append = 'failed')
+                                    pass
                         
