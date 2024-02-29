@@ -119,7 +119,7 @@ for epochs in epoch_ls:
                                     with open(started_file_path, 'a') as file:
                                         file.write(file_prefix + '\n')
                             if run:      
-                                try:      
+                                # try:      
                                     print(region, ode_name, test_season, epochs, num)
 
                                     # make folders
@@ -158,13 +158,12 @@ for epochs in epoch_ls:
                                                     track_norms=True, 
                                                     norm_file=f'{norm_prefix}norms.txt', 
                                                     disable=True, 
-                                                    validate = {'x_test':x_test, 'y_test':y_test, 't':t, 'scaler':scaler, 'n_samples':32})
-                                        print('done')                    
+                                                    validate = {'x_test':x_test, 'y_test':y_test, 't':t, 'scaler':scaler, 'n_samples':32})              
                                     model.save()
                                     
-                                    utils.test(model, scaler, x_test, y_test, t, test_season=test_season, variables = {'epochs':epochs, 'gamma':gamma, 'ode_name':ode_name, 'region':region, 'latent_dim':latent_dim, 'num':num}, n_samples = 128, file_name='results_table_server.csv')
+                                    utils.test(model, scaler, x_test, y_test, t, test_season=test_season, variables = {'epochs':epochs, 'gamma':gamma, 'ode_name':ode_name, 'region':region, 'latent_dim':latent_dim, 'num':num}, n_samples = 128, file_name='results_table_server')
                                     utils.append_to_line(started_file_path, file_prefix, append = 'finished')
-                                except:
-                                    utils.append_to_line(started_file_path, file_prefix, append = 'failed')
-                                    pass
+                                # except:
+                                #     utils.append_to_line(started_file_path, file_prefix, append = 'failed')
+                                #     pass
                         
