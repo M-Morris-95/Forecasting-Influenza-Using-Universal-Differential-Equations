@@ -2,7 +2,7 @@
 
 for i in {1..24}
 do
-    python -u national_odes.py $i > logs/all_testing$i.log 2>&1 &
+    python -u run_ode.py $i > logs/all_testing$i.log 2>&1 &
 done
 
 #!/bin/bash
