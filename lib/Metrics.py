@@ -47,9 +47,11 @@ def mb_log(true, mean=None, std=None, bins=False):
 
         dist = norm(loc=mean, scale=std)
 
-        mbl = np.log((dist.cdf(true + 0.6) - dist.cdf(true - 0.5)))
-        mbl[np.invert(np.isfinite(mbl))] = -10
-        mbl[mbl < -10] = -10
+        cdf = (dist.cdf(true + 0.6) - dist.cdf(true - 0.5))
+        cdf[cdf==0] = 4.5399929762484854e-05
+        mbl = np.log(cdf)
+        # mbl[np.invert(np.isfinite(mbl))] = -10
+        # mbl[mbl < -10] = -10
 
         return mbl
 
