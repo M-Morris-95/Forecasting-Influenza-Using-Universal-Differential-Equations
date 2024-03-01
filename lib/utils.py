@@ -54,9 +54,9 @@ def test(model, scaler, x_test, y_test, t, test_season, window_size=1, variables
         for key, value in variables.items():
             results_df.loc[idx, key] = value
 
-        for g in [window_size + 6, window_size + 13, window_size + 20, window_size + 27]:
-            results_df.loc[idx, f"{test_season} {g}"] = Metrics.nll(y_te[:, g, :], pred_mean[:, g, :], pred_std[:, g, :])
-            results_df.loc[idx, f"skill {test_season} {g}"] = Metrics.skill(y_te[:, g, :], pred_mean[:, g, :], pred_std[:, g, :])
+        for col, g in zip([7,14,21,28], [window_size + 6, window_size + 13, window_size + 20, window_size + 27]):
+            results_df.loc[idx, f"{test_season} {col}"] = Metrics.nll(y_te[:, g, :], pred_mean[:, g, :], pred_std[:, g, :])
+            results_df.loc[idx, f"skill {test_season} {col}"] = Metrics.skill(y_te[:, g, :], pred_mean[:, g, :], pred_std[:, g, :])
 
         results_df.to_csv(file_name + '.csv')
                
