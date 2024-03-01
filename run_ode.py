@@ -163,8 +163,7 @@ for region in regions:
                                                         disable=True, 
                                                         validate = {'x_test':x_test, 'y_test':y_test, 't':t, 'scaler':scaler, 'n_samples':32})            
                                         model.save()
-                                        
-                                        utils.test(model, scaler, x_test, y_test, t, test_season=test_season, variables = {'epochs':epochs, 'gamma':gamma, 'ode_name':ode_name, 'region':region, 'latent_dim':latent_dim, 'window_size':window_size, 'num':num}, n_samples = 128, file_name='results_table_server')
+                                        utils.test(model, scaler, x_test, y_test, t, test_season=test_season, window_size=window_size, variables = {'epochs':epochs, 'gamma':gamma, 'ode_name':ode_name, 'region':region, 'latent_dim':latent_dim, 'window_size':window_size, 'num':num}, n_samples = 128, file_name='results_table_server')
                                         utils.append_to_line(started_file_path, file_prefix, append = 'finished')
                                     except:
                                         utils.append_to_line(started_file_path, file_prefix, append = 'failed')
